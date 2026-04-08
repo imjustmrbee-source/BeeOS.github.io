@@ -179,11 +179,29 @@
     /* ACCESSIBILITY */
     body.high-contrast #phone { filter:contrast(1.5) saturate(0); }
     body.large-font { font-size:1.25em; }
+    body.bold-text { font-weight:700; }
+    body.reduce-motion * { animation:none !important; transition:none !important; }
+    body.large-icons .app { width:96px; }
+    body.large-icons .icon { width:70px; height:70px; font-size:30px; }
+    body.compact-icons .app { width:74px; }
+    body.compact-icons .icon { width:56px; height:56px; font-size:24px; }
 
     /* SCROLLBAR */
     ::-webkit-scrollbar { width:4px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:4px; }
+
+    #beeFooter {
+      position:absolute;
+      bottom:8px;
+      left:0;
+      width:100%;
+      text-align:center;
+      font-size:11px;
+      opacity:0.55;
+      z-index:110;
+      pointer-events:none;
+    }
   </style>
 </head>
 <body>
@@ -286,21 +304,48 @@
     <div class="settings-section">
       <h3>Profile</h3>
       <input class="settings-input" id="username" placeholder="Your name">
-      <button class="settings-btn" onclick="saveName()">Save Name</button>
+      <input class="settings-input" id="lockGreeting" placeholder="Lockscreen greeting (optional)">
+      <select class="settings-input" id="profileTimezone">
+        <option>EST</option><option>CST</option><option>MST</option><option>PST</option>
+        <option>GMT</option><option>CET</option><option>IST</option><option>JST</option>
+      </select>
+      <select class="settings-input" id="themeSelect">
+        <option value="midnight">Midnight</option>
+        <option value="ocean">Ocean</option>
+        <option value="sunset">Sunset</option>
+        <option value="forest">Forest</option>
+      </select>
+      <button class="settings-btn" onclick="saveProfileSettings()">Save Profile</button>
     </div>
 
     <div class="settings-section">
-      <h3>Change PIN</h3>
+      <h3>Security</h3>
       <input class="settings-input" id="newPin" type="password" placeholder="New PIN (min 4 digits)" maxlength="8">
       <input class="settings-input" id="confirmPin" type="password" placeholder="Confirm PIN" maxlength="8">
-      <button class="settings-btn" onclick="changePin()">Update PIN</button>
+      <select class="settings-input" id="autoLock">
+        <option value="0">Auto-lock: Off</option>
+        <option value="15">Auto-lock: 15s</option>
+        <option value="30">Auto-lock: 30s</option>
+        <option value="60">Auto-lock: 1m</option>
+      </select>
+      <div class="toggle-row">
+        <label>Require PIN on startup</label>
+        <input type="checkbox" id="requirePinBoot">
+      </div>
+      <button class="settings-btn" onclick="saveSecuritySettings()">Save Security</button>
       <p id="pinChangeMsg" style="font-size:13px;margin:4px 0 0;"></p>
     </div>
 
     <div class="settings-section">
-      <h3>Wallpaper</h3>
-      <input type="file" accept="image/*" onchange="changeBG(event)">
-      <button class="settings-btn" style="margin-top:8px;" onclick="clearBG()">Clear Wallpaper</button>
+      <h3>Appearance</h3>
+      <label style="display:block;font-size:13px;opacity:0.7;margin-bottom:4px;">Home Background</label>
+      <input type="file" accept="image/*" onchange="changeHomeBG(event)">
+      <label style="display:block;font-size:13px;opacity:0.7;margin:8px 0 4px;">Lockscreen Background</label>
+      <input type="file" accept="image/*" onchange="changeLockBG(event)">
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="settings-btn" style="flex:1;" onclick="clearHomeBG()">Clear Home</button>
+        <button class="settings-btn" style="flex:1;" onclick="clearLockBG()">Clear Lock</button>
+      </div>
     </div>
 
     <div class="settings-section">
@@ -313,10 +358,40 @@
         <label>Large Font</label>
         <input type="checkbox" id="fontSize" onchange="toggleFontSize()">
       </div>
+      <div class="toggle-row">
+        <label>Reduce Motion</label>
+        <input type="checkbox" id="reduceMotion" onchange="toggleReduceMotion()">
+      </div>
+      <div class="toggle-row">
+        <label>Bold Text</label>
+        <input type="checkbox" id="boldText" onchange="toggleBoldText()">
+      </div>
+      <select class="settings-input" id="iconSize" onchange="setIconSize(this.value)">
+        <option value="normal">Icon Size: Normal</option>
+        <option value="large">Icon Size: Large</option>
+        <option value="compact">Icon Size: Compact</option>
+      </select>
     </div>
 
     <div class="settings-section">
       <h3>System</h3>
+      <select class="settings-input" id="timeFormat" onchange="setTimeFormat(this.value)">
+        <option value="24">Time Format: 24-hour</option>
+        <option value="12">Time Format: 12-hour</option>
+      </select>
+      <select class="settings-input" id="bootTo">
+        <option value="lock">Startup Screen: Lock</option>
+        <option value="home">Startup Screen: Home</option>
+      </select>
+      <div class="toggle-row">
+        <label>Enable Sounds</label>
+        <input type="checkbox" id="soundEnabled">
+      </div>
+      <div class="toggle-row">
+        <label>Enable Notifications</label>
+        <input type="checkbox" id="notifEnabled">
+      </div>
+      <button class="settings-btn" onclick="saveSystemSettings()">Save System</button>
       <button class="settings-btn danger" onclick="confirmReset()">Factory Reset</button>
     </div>
   </div>
@@ -475,23 +550,13 @@
     </div>
   </div>
 
-  <!-- BROWSER -->
-  <div id="browser" class="screen">
+  <!-- WIKIPEDIA -->
+  <div id="wikipedia" class="screen">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
-    <h2>Browser</h2>
+    <h2>Wikipedia</h2>
     <div style="padding:0 10px 10px;display:flex;flex-direction:column;flex:1;gap:8px;">
-      <div style="display:flex;gap:6px;">
-        <input id="browserUrl" class="settings-input" placeholder="Enter a URL..." style="flex:1;margin:0;" onkeydown="if(event.key==='Enter')browserGo()">
-        <button class="settings-btn" onclick="browserGo()">Go</button>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://en.m.wikipedia.org')">Wikipedia</button>
-        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://lite.duckduckgo.com/lite')">DuckDuckGo</button>
-        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://news.ycombinator.com')">Hacker News</button>
-        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://www.bbc.com/news')">BBC News</button>
-      </div>
-      <iframe id="browserFrame" style="flex:1;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#fff;min-height:300px;" src="about:blank" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
-      <p style="font-size:11px;opacity:0.35;text-align:center;margin:0;">Some sites block embedding — try Wikipedia or DuckDuckGo.</p>
+      <iframe id="wikipediaFrame" style="flex:1;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#fff;min-height:300px;" src="https://en.m.wikipedia.org/wiki/Main_Page" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+      <p style="font-size:11px;opacity:0.35;text-align:center;margin:0;">Embedded Wikipedia app.</p>
     </div>
   </div>
 
@@ -509,18 +574,69 @@
     </div>
   </div>
 
+  <div id="beeFooter">BeeOS: Made by Bentley: v0.1</div>
+
 </div>
 
 <script>
 /* ---------- STATUS BAR ---------- */
 function updateStatusBar() {
   const n = new Date();
-  document.getElementById("timeBar").textContent =
-    n.getHours() + ":" + String(n.getMinutes()).padStart(2, "0");
+  document.getElementById("timeBar").textContent = formatTime(n, false);
   document.getElementById("dateBar").textContent = n.toDateString();
 }
 setInterval(updateStatusBar, 1000);
 updateStatusBar();
+
+function getSettings() {
+  return JSON.parse(localStorage.getItem("beeSettings") || "{}");
+}
+
+function setSettings(next) {
+  const merged = { ...getSettings(), ...next };
+  localStorage.setItem("beeSettings", JSON.stringify(merged));
+  applyVisualSettings();
+  return merged;
+}
+
+function formatTime(date, includeSeconds = true) {
+  const s = getSettings();
+  const use12 = s.timeFormat === "12";
+  let h = date.getHours();
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const sec = String(date.getSeconds()).padStart(2, "0");
+  let suffix = "";
+  if (use12) {
+    suffix = h >= 12 ? " PM" : " AM";
+    h = h % 12 || 12;
+  }
+  return includeSeconds ? `${String(h).padStart(2, "0")}:${m}:${sec}${suffix}` : `${String(h).padStart(2, "0")}:${m}${suffix}`;
+}
+
+function applyVisualSettings() {
+  const s = getSettings();
+  document.body.classList.toggle("high-contrast", !!s.highContrast);
+  document.body.classList.toggle("large-font", !!s.largeFont);
+  document.body.classList.toggle("reduce-motion", !!s.reduceMotion);
+  document.body.classList.toggle("bold-text", !!s.boldText);
+  document.body.classList.toggle("large-icons", s.iconSize === "large");
+  document.body.classList.toggle("compact-icons", s.iconSize === "compact");
+
+  const themes = {
+    midnight: "linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)",
+    ocean: "linear-gradient(135deg,#005c97,#363795,#00a8cc)",
+    sunset: "linear-gradient(135deg,#ff7e5f,#feb47b,#ff9966)",
+    forest: "linear-gradient(135deg,#134e5e,#71b280,#2d6a4f)",
+  };
+  document.getElementById("phone").style.background = themes[s.theme || "midnight"];
+
+  document.getElementById("home").style.backgroundImage = s.homeBG ? `url(${s.homeBG})` : "";
+  document.getElementById("lock").style.backgroundImage = s.lockBG ? `url(${s.lockBG})` : "";
+  document.getElementById("home").style.backgroundSize = "cover";
+  document.getElementById("lock").style.backgroundSize = "cover";
+  document.getElementById("home").style.backgroundPosition = "center";
+  document.getElementById("lock").style.backgroundPosition = "center";
+}
 
 /* ---------- SCREEN LOGIC ---------- */
 function showScreen(id) {
@@ -539,6 +655,25 @@ function showScreen(id) {
   if (id === "games") loadGames();
 }
 
+let autoLockTimer = null;
+function scheduleAutoLock() {
+  if (autoLockTimer) clearTimeout(autoLockTimer);
+  const s = getSettings();
+  const sec = Number(s.autoLock || 0);
+  if (!sec) return;
+  autoLockTimer = setTimeout(() => {
+    initLockScreen();
+    showScreen("lock");
+  }, sec * 1000);
+}
+
+["click", "keydown", "touchstart"].forEach(evt => {
+  document.addEventListener(evt, () => {
+    const active = document.querySelector(".screen.active");
+    if (active && active.id !== "lock") scheduleAutoLock();
+  });
+});
+
 /* ---------- BOOT ---------- */
 setTimeout(() => {
   if (!localStorage.getItem("setupDone") || !localStorage.getItem("beePin")) {
@@ -546,8 +681,12 @@ setTimeout(() => {
     showScreen("setup");
     renderSetup();
   } else {
+    applyVisualSettings();
     initLockScreen();
-    showScreen("lock");
+    const s = getSettings();
+    const bootTo = s.bootTo || "lock";
+    const requirePinBoot = s.requirePinBoot !== false;
+    showScreen(bootTo === "home" && !requirePinBoot ? "home" : "lock");
   }
 }, 1200);
 
@@ -615,15 +754,13 @@ function finishSetup() {
 let enteredPin = "";
 
 function initLockScreen() {
+  const s = getSettings();
   enteredPin = "";
   updatePinDots();
   document.getElementById("pinError").textContent = "";
-  try {
-    const user = JSON.parse(localStorage.getItem("beeUser") || "{}");
-    if (user.name) {
-      document.getElementById("lockGreet").textContent = "Hi, " + user.name;
-    }
-  } catch (e) {}
+  const user = JSON.parse(localStorage.getItem("beeUser") || "{}");
+  const fallback = user.name ? `Hi, ${user.name}` : "Enter your PIN";
+  document.getElementById("lockGreet").textContent = s.lockGreeting || fallback;
 }
 
 function press(n) {
@@ -641,6 +778,7 @@ function press(n) {
         enteredPin = "";
         updatePinDots();
         showScreen("home");
+        scheduleAutoLock();
       } else {
         document.getElementById("pinError").textContent = "Incorrect PIN. Try again.";
         enteredPin = "";
@@ -701,7 +839,7 @@ const allApps = [
   { name:"Gallery", icon:"🖼️", id:"gallery" },
   { name:"Mail", icon:"✉️", id:"mail" },
   { name:"Clock", icon:"⏰", id:"clock" },
-  { name:"Browser", icon:"🌐", id:"browser" },
+  { name:"Wikipedia", icon:"📚", id:"wikipedia" },
   { name:"Games", icon:"🎮", id:"games" },
 ];
 const defaultApps = ["Notes","Calc","Settings","App Store"];
@@ -761,61 +899,100 @@ function calculate() {
 
 /* ---------- SETTINGS ---------- */
 function loadSettings() {
+  const s = getSettings();
   const d = JSON.parse(localStorage.getItem("beeUser") || "{}");
   document.getElementById("username").value = d.name || "";
-  document.getElementById("contrast").checked = document.body.classList.contains("high-contrast");
-  document.getElementById("fontSize").checked = document.body.classList.contains("large-font");
+  document.getElementById("lockGreeting").value = s.lockGreeting || "";
+  document.getElementById("profileTimezone").value = d.tz || "EST";
+  document.getElementById("themeSelect").value = s.theme || "midnight";
+  document.getElementById("contrast").checked = !!s.highContrast;
+  document.getElementById("fontSize").checked = !!s.largeFont;
+  document.getElementById("reduceMotion").checked = !!s.reduceMotion;
+  document.getElementById("boldText").checked = !!s.boldText;
+  document.getElementById("iconSize").value = s.iconSize || "normal";
+  document.getElementById("timeFormat").value = s.timeFormat || "24";
+  document.getElementById("autoLock").value = String(s.autoLock || 0);
+  document.getElementById("requirePinBoot").checked = s.requirePinBoot !== false;
+  document.getElementById("bootTo").value = s.bootTo || "lock";
+  document.getElementById("soundEnabled").checked = s.soundEnabled !== false;
+  document.getElementById("notifEnabled").checked = s.notifEnabled !== false;
   document.getElementById("newPin").value = "";
   document.getElementById("confirmPin").value = "";
   document.getElementById("pinChangeMsg").textContent = "";
+  applyVisualSettings();
 }
 
-function saveName() {
+function saveProfileSettings() {
   const d = JSON.parse(localStorage.getItem("beeUser") || "{}");
   d.name = document.getElementById("username").value.trim();
+  d.tz = document.getElementById("profileTimezone").value;
   localStorage.setItem("beeUser", JSON.stringify(d));
-  alert("Name saved!");
+  setSettings({
+    lockGreeting: document.getElementById("lockGreeting").value.trim(),
+    theme: document.getElementById("themeSelect").value,
+  });
+  alert("Profile settings saved!");
 }
 
-function changePin() {
+function saveSecuritySettings() {
   const p1 = document.getElementById("newPin").value;
   const p2 = document.getElementById("confirmPin").value;
   const msg = document.getElementById("pinChangeMsg");
-  if (!/^\d+$/.test(p1)) { msg.style.color="#ff6b6b"; msg.textContent="PIN must be digits only"; return; }
-  if (p1.length < 4) { msg.style.color="#ff6b6b"; msg.textContent="PIN must be at least 4 digits"; return; }
-  if (p1 !== p2) { msg.style.color="#ff6b6b"; msg.textContent="PINs don't match"; return; }
-  localStorage.setItem("beePin", p1);
+  if (p1 || p2) {
+    if (!/^\d+$/.test(p1)) { msg.style.color="#ff6b6b"; msg.textContent="PIN must be digits only"; return; }
+    if (p1.length < 4) { msg.style.color="#ff6b6b"; msg.textContent="PIN must be at least 4 digits"; return; }
+    if (p1 !== p2) { msg.style.color="#ff6b6b"; msg.textContent="PINs don't match"; return; }
+    localStorage.setItem("beePin", p1);
+  }
+  setSettings({
+    autoLock: Number(document.getElementById("autoLock").value),
+    requirePinBoot: document.getElementById("requirePinBoot").checked,
+  });
   document.getElementById("newPin").value = "";
   document.getElementById("confirmPin").value = "";
-  msg.style.color="#34c759"; msg.textContent="PIN updated!";
+  msg.style.color="#34c759"; msg.textContent = p1 ? "Security settings saved. PIN updated!" : "Security settings saved.";
 }
 
-function changeBG(e) {
-  const file = e.target.files[0];
+function readImageAsDataURL(file, callback) {
   if (!file) return;
   const r = new FileReader();
-  r.onload = () => {
-    document.getElementById("phone").style.backgroundImage = `url(${r.result})`;
-    localStorage.setItem("wallpaper", r.result);
-  };
+  r.onload = () => callback(r.result);
   r.readAsDataURL(file);
 }
 
-function clearBG() {
-  document.getElementById("phone").style.backgroundImage = "";
-  localStorage.removeItem("wallpaper");
+function changeHomeBG(e) {
+  const file = e.target.files[0];
+  readImageAsDataURL(file, (data) => setSettings({ homeBG: data }));
 }
 
-function toggleContrast() { document.body.classList.toggle("high-contrast"); }
-function toggleFontSize() { document.body.classList.toggle("large-font"); }
+function changeLockBG(e) {
+  const file = e.target.files[0];
+  readImageAsDataURL(file, (data) => setSettings({ lockBG: data }));
+}
+
+function clearHomeBG() { setSettings({ homeBG: "" }); }
+function clearLockBG() { setSettings({ lockBG: "" }); }
+function toggleContrast() { setSettings({ highContrast: document.getElementById("contrast").checked }); }
+function toggleFontSize() { setSettings({ largeFont: document.getElementById("fontSize").checked }); }
+function toggleReduceMotion() { setSettings({ reduceMotion: document.getElementById("reduceMotion").checked }); }
+function toggleBoldText() { setSettings({ boldText: document.getElementById("boldText").checked }); }
+function setIconSize(value) { setSettings({ iconSize: value }); }
+function setTimeFormat(value) { setSettings({ timeFormat: value }); updateStatusBar(); tickClock(); }
+function saveSystemSettings() {
+  setSettings({
+    bootTo: document.getElementById("bootTo").value,
+    soundEnabled: document.getElementById("soundEnabled").checked,
+    notifEnabled: document.getElementById("notifEnabled").checked,
+    timeFormat: document.getElementById("timeFormat").value,
+  });
+  alert("System settings saved!");
+}
 
 function confirmReset() {
   if (confirm("Factory reset BeeOS? All data will be erased.")) redoSetup();
 }
 
-/* ---------- WALLPAPER RESTORE ---------- */
-const savedBG = localStorage.getItem("wallpaper");
-if (savedBG) document.getElementById("phone").style.backgroundImage = `url(${savedBG})`;
+applyVisualSettings();
 
 /* ---------- RESET ---------- */
 function redoSetup() {
@@ -832,7 +1009,7 @@ const storeApps = [
   { name:"Gallery", icon:"🖼️" },
   { name:"Mail", icon:"✉️" },
   { name:"Clock", icon:"⏰" },
-  { name:"Browser", icon:"🌐" },
+  { name:"Wikipedia", icon:"📚" },
   { name:"Games", icon:"🎮" },
 ];
 
@@ -942,10 +1119,7 @@ function initClock() {
 
 function tickClock() {
   const n = new Date();
-  document.getElementById("clockFace").textContent =
-    String(n.getHours()).padStart(2,"0") + ":" +
-    String(n.getMinutes()).padStart(2,"0") + ":" +
-    String(n.getSeconds()).padStart(2,"0");
+  document.getElementById("clockFace").textContent = formatTime(n, true);
   document.getElementById("clockDate").textContent = n.toDateString();
   if (alarmTime) {
     const [ah, am] = alarmTime.split(":").map(Number);
@@ -1267,20 +1441,6 @@ function sendMail() {
   document.getElementById("mailBody").value = "";
   msg.style.color="#34c759"; msg.textContent="✓ Message saved to inbox!";
   setTimeout(() => { mailTab("inbox"); renderMailInbox(); }, 1200);
-}
-
-/* ========== BROWSER ========== */
-function browserGo() {
-  let url = document.getElementById("browserUrl").value.trim();
-  if (!url) return;
-  if (!url.startsWith("http")) url = "https://" + url;
-  document.getElementById("browserUrl").value = url;
-  document.getElementById("browserFrame").src = url;
-}
-
-function browserNav(url) {
-  document.getElementById("browserUrl").value = url;
-  document.getElementById("browserFrame").src = url;
 }
 
 /* ========== GAMES ========== */
