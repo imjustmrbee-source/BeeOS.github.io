@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BeeOS v5</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, sans-serif; display:flex; justify-content:center; background:#111; min-height:100vh; }
+    #phone {
+      width:100%; max-width:400px; height:100vh;
+      border-radius:30px; overflow:hidden;
+      background: #1a1a2e;
+      background-size:cover; background-position:center;
+      position:relative; color:white;
+    }
+
+    /* STATUS BAR */
+    #statusBar {
+      width:100%; display:flex; justify-content:space-between; align-items:center;
+      padding:8px 16px; font-size:13px; font-weight:600;
+      background:rgba(0,0,0,0.35); backdrop-filter:blur(6px);
+      position:absolute; top:0; z-index:100;
+    }
+
+    /* SCREENS */
+    .screen { display:none; width:100%; height:100%; flex-direction:column; animation:fadeIn 0.25s ease; }
+    .screen.active { display:flex; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+    /* BACK BUTTON */
+    .back-btn {
+      background: rgba(255,255,255,0.15); border:none; color:white;
+      padding:8px 14px; border-radius:20px; cursor:pointer;
+      font-size:14px; margin:10px; align-self:flex-start; margin-top:58px;
+      transition:background 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    h1,h2,h3 { margin:6px 0; text-align:center; }
+
+    /* LOCK SCREEN */
+    #lock {
+      align-items:center; justify-content:center; text-align:center;
+      padding-top:50px;
+    }
+    #lock h2 { font-size:22px; margin-bottom:4px; }
+    .pin-display {
+      font-size:32px; letter-spacing:14px; margin:16px 0 20px;
+      min-height:44px; display:flex; align-items:center; justify-content:center;
+    }
+    .pin-dot {
+      width:14px; height:14px; border-radius:50%; margin:0 5px;
+      border:2px solid rgba(255,255,255,0.5);
+      transition:background 0.15s, border-color 0.15s;
+    }
+    .pin-dot.filled { background:white; border-color:white; }
+    .keypad { display:grid; grid-template-columns:repeat(3,80px); gap:12px; justify-content:center; margin-top:8px; }
+    .key {
+      background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2);
+      padding:18px; font-size:20px; border-radius:50%; text-align:center;
+      cursor:pointer; user-select:none; transition:background 0.15s, transform 0.1s;
+      color:white;
+    }
+    .key:active { background:rgba(255,255,255,0.35); transform:scale(0.93); }
+    #pinError { color:#ff6b6b; font-size:14px; margin-top:10px; min-height:20px; }
+
+    /* BOOT */
+    #boot { align-items:center; justify-content:center; background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); }
+    #boot h1 { font-size:42px; letter-spacing:4px; }
+    #boot p { color:rgba(255,255,255,0.5); font-size:14px; }
+    .redo-btn {
+      position:absolute; top:18px; right:14px; background:rgba(255,255,255,0.1);
+      border:1px solid rgba(255,255,255,0.2); color:white; padding:6px 12px;
+      border-radius:16px; cursor:pointer; font-size:12px;
+    }
+
+    /* HOME */
+    #home { padding-top:50px; overflow-y:auto; }
+    .apps { display:flex; flex-wrap:wrap; justify-content:center; padding:10px 0 20px; }
+    .app { width:82px; margin:8px; text-align:center; cursor:pointer; transition:transform 0.15s; }
+    .app:hover { transform:scale(1.08); }
+    .app:active { transform:scale(0.95); }
+    .icon {
+      width:62px; height:62px; background:rgba(255,255,255,0.18);
+      border-radius:16px; display:flex; align-items:center; justify-content:center;
+      font-size:28px; margin:auto; border:1px solid rgba(255,255,255,0.12);
+    }
+    .app span { display:block; font-size:11px; margin-top:5px; opacity:0.85; }
+
+    /* NOTES */
+    #notes textarea {
+      width:calc(100% - 20px); margin:0 10px; padding:10px; border-radius:10px;
+      border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1);
+      color:white; font-size:14px; resize:none; flex:1; outline:none;
+    }
+    #notes textarea::placeholder { color:rgba(255,255,255,0.4); }
+    .save-btn {
+      margin:10px; padding:10px; background:rgba(255,255,255,0.2);
+      border:1px solid rgba(255,255,255,0.3); color:white; border-radius:10px;
+      cursor:pointer; font-size:15px; transition:background 0.2s;
+    }
+    .save-btn:hover { background:rgba(255,255,255,0.3); }
+
+    /* CALC */
+    #calc { align-items:center; padding-top:50px; }
+    #calcInput {
+      width:90%; padding:12px; border-radius:10px; font-size:18px;
+      background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+      color:white; text-align:right; outline:none; margin-top:10px;
+    }
+    #calcResult { font-size:28px; margin:10px 0; }
+    .calc-row { display:flex; gap:8px; margin:4px 10px; }
+    .calc-btn {
+      flex:1; padding:14px; border-radius:10px; font-size:18px; cursor:pointer;
+      border:1px solid rgba(255,255,255,0.15); color:white; transition:background 0.15s;
+    }
+    .calc-btn.num { background:rgba(255,255,255,0.12); }
+    .calc-btn.op { background:rgba(255,165,0,0.3); }
+    .calc-btn.eq { background:rgba(0,200,100,0.35); }
+    .calc-btn.clear { background:rgba(255,80,80,0.3); }
+    .calc-btn:active { opacity:0.7; transform:scale(0.96); }
+
+    /* SETTINGS */
+    #settings { padding-top:50px; overflow-y:auto; }
+    .settings-section { margin:10px 14px; background:rgba(255,255,255,0.08); border-radius:14px; padding:14px; }
+    .settings-section h3 { margin:0 0 10px; font-size:15px; opacity:0.7; text-transform:uppercase; letter-spacing:1px; font-size:12px; }
+    .settings-input {
+      width:100%; padding:9px 12px; border-radius:8px; margin-bottom:8px;
+      background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+      color:white; font-size:14px; outline:none;
+    }
+    .settings-input::placeholder { color:rgba(255,255,255,0.35); }
+    .settings-btn {
+      padding:9px 16px; border-radius:8px; background:rgba(255,255,255,0.18);
+      border:1px solid rgba(255,255,255,0.25); color:white; cursor:pointer; font-size:14px;
+    }
+    .settings-btn:hover { background:rgba(255,255,255,0.28); }
+    .settings-btn.danger { background:rgba(255,60,60,0.25); border-color:rgba(255,60,60,0.4); }
+    .toggle-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
+    .toggle-row label { font-size:14px; }
+    input[type=file] { color:white; font-size:13px; width:100%; }
+
+    /* STORE */
+    #store { padding-top:50px; overflow-y:auto; }
+    .store-grid { display:flex; flex-wrap:wrap; justify-content:center; padding:10px; }
+    .store-card {
+      width:110px; margin:8px; background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.12); border-radius:14px;
+      padding:12px 8px; text-align:center;
+    }
+    .store-card .icon { width:52px; height:52px; font-size:24px; border-radius:13px; }
+    .store-card span { display:block; font-size:12px; margin:6px 0 8px; }
+    .install-btn {
+      padding:5px 12px; border-radius:16px; font-size:12px; cursor:pointer;
+      border:none; font-weight:600; transition:opacity 0.15s;
+    }
+    .install-btn.install { background:#34c759; color:#000; }
+    .install-btn.remove { background:rgba(255,80,80,0.7); color:white; }
+
+    /* SETUP */
+    #setup { align-items:center; justify-content:center; padding:20px; background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); }
+    #setupStep { text-align:center; width:100%; max-width:300px; }
+    #setupStep h2 { margin-bottom:20px; }
+    #setupStep input, #setupStep select {
+      width:100%; padding:10px; border-radius:10px; margin-bottom:12px;
+      background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25);
+      color:white; font-size:16px; outline:none; text-align:center;
+    }
+    #setupStep select option { background:#302b63; color:white; }
+    #setupStep button {
+      width:100%; padding:12px; border-radius:10px; background:rgba(255,255,255,0.2);
+      border:1px solid rgba(255,255,255,0.3); color:white; font-size:16px; cursor:pointer;
+    }
+    #setupStep button:hover { background:rgba(255,255,255,0.3); }
+    .progress-dots { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+    .progress-dots span { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.25); }
+    .progress-dots span.active { background:white; }
+
+    /* ACCESSIBILITY */
+    body.high-contrast #phone { filter:contrast(1.5) saturate(0); }
+    body.large-font { font-size:1.25em; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:4px; }
+  </style>
+</head>
+<body>
+<div id="phone">
+
+  <!-- STATUS BAR -->
+  <div id="statusBar">
+    <div id="timeBar">--:--</div>
+    <div id="dateBar">--</div>
+  </div>
+
+  <!-- BOOT -->
+  <div id="boot" class="screen active">
+    <button class="redo-btn" onclick="redoSetup()">Reset</button>
+    <h1>🐝 BeeOS</h1>
+    <p>v5</p>
+  </div>
+
+  <!-- SETUP -->
+  <div id="setup" class="screen">
+    <div id="setupStep"></div>
+  </div>
+
+  <!-- LOCK -->
+  <div id="lock" class="screen">
+    <h2>🔒 BeeOS</h2>
+    <p id="lockGreet" style="opacity:0.6;margin:0 0 10px;font-size:14px;">Enter your PIN</p>
+    <div class="pin-display" id="pinDots"></div>
+    <div class="keypad">
+      <button class="key" onclick="press(1)">1</button>
+      <button class="key" onclick="press(2)">2</button>
+      <button class="key" onclick="press(3)">3</button>
+      <button class="key" onclick="press(4)">4</button>
+      <button class="key" onclick="press(5)">5</button>
+      <button class="key" onclick="press(6)">6</button>
+      <button class="key" onclick="press(7)">7</button>
+      <button class="key" onclick="press(8)">8</button>
+      <button class="key" onclick="press(9)">9</button>
+      <div></div>
+      <button class="key" onclick="press(0)">0</button>
+      <button class="key" onclick="pressBackspace()">⌫</button>
+    </div>
+    <p id="pinError"></p>
+  </div>
+
+  <!-- HOME -->
+  <div id="home" class="screen">
+    <div class="apps" id="homeApps"></div>
+  </div>
+
+  <!-- NOTES -->
+  <div id="notes" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Notes</h2>
+    <textarea id="notesText" placeholder="Write something..." rows="14"></textarea>
+    <button class="save-btn" onclick="saveNotes()">💾 Save</button>
+  </div>
+
+  <!-- CALC -->
+  <div id="calc" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Calculator</h2>
+    <input id="calcInput" placeholder="0" readonly>
+    <div id="calcResult"></div>
+    <div class="calc-row">
+      <button class="calc-btn clear" onclick="calcClear()">C</button>
+      <button class="calc-btn op" onclick="calcInput('%')">%</button>
+      <button class="calc-btn op" onclick="calcInput('/')">/</button>
+    </div>
+    <div class="calc-row">
+      <button class="calc-btn num" onclick="calcInput('7')">7</button>
+      <button class="calc-btn num" onclick="calcInput('8')">8</button>
+      <button class="calc-btn num" onclick="calcInput('9')">9</button>
+      <button class="calc-btn op" onclick="calcInput('*')">×</button>
+    </div>
+    <div class="calc-row">
+      <button class="calc-btn num" onclick="calcInput('4')">4</button>
+      <button class="calc-btn num" onclick="calcInput('5')">5</button>
+      <button class="calc-btn num" onclick="calcInput('6')">6</button>
+      <button class="calc-btn op" onclick="calcInput('-')">−</button>
+    </div>
+    <div class="calc-row">
+      <button class="calc-btn num" onclick="calcInput('1')">1</button>
+      <button class="calc-btn num" onclick="calcInput('2')">2</button>
+      <button class="calc-btn num" onclick="calcInput('3')">3</button>
+      <button class="calc-btn op" onclick="calcInput('+')">+</button>
+    </div>
+    <div class="calc-row">
+      <button class="calc-btn num" onclick="calcInput('0')" style="flex:2">0</button>
+      <button class="calc-btn num" onclick="calcInput('.')">.</button>
+      <button class="calc-btn eq" onclick="calculate()">=</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="settings" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Settings</h2>
+
+    <div class="settings-section">
+      <h3>Profile</h3>
+      <input class="settings-input" id="username" placeholder="Your name">
+      <button class="settings-btn" onclick="saveName()">Save Name</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Change PIN</h3>
+      <input class="settings-input" id="newPin" type="password" placeholder="New PIN (min 4 digits)" maxlength="8">
+      <input class="settings-input" id="confirmPin" type="password" placeholder="Confirm PIN" maxlength="8">
+      <button class="settings-btn" onclick="changePin()">Update PIN</button>
+      <p id="pinChangeMsg" style="font-size:13px;margin:4px 0 0;"></p>
+    </div>
+
+    <div class="settings-section">
+      <h3>Wallpaper</h3>
+      <input type="file" accept="image/*" onchange="changeBG(event)">
+      <button class="settings-btn" style="margin-top:8px;" onclick="clearBG()">Clear Wallpaper</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Accessibility</h3>
+      <div class="toggle-row">
+        <label>High Contrast</label>
+        <input type="checkbox" id="contrast" onchange="toggleContrast()">
+      </div>
+      <div class="toggle-row">
+        <label>Large Font</label>
+        <input type="checkbox" id="fontSize" onchange="toggleFontSize()">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>System</h3>
+      <button class="settings-btn danger" onclick="confirmReset()">Factory Reset</button>
+    </div>
+  </div>
+
+  <!-- APP STORE -->
+  <div id="store" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>App Store</h2>
+    <div id="storeApps" class="store-grid"></div>
+  </div>
+
+  <!-- WEATHER -->
+  <div id="weather" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Weather</h2>
+    <div id="weatherBody" style="padding:10px 16px;overflow-y:auto;flex:1;">
+      <div style="text-align:center;padding:20px 0;">
+        <div id="weatherIcon" style="font-size:64px;margin-bottom:8px;">🌤️</div>
+        <div id="weatherTemp" style="font-size:52px;font-weight:300;">--°F</div>
+        <div id="weatherDesc" style="font-size:16px;opacity:0.7;margin:4px 0;">Locating...</div>
+        <div id="weatherCity" style="font-size:13px;opacity:0.5;"></div>
+      </div>
+      <div id="weatherDetails" style="display:flex;justify-content:space-around;background:rgba(255,255,255,0.08);border-radius:14px;padding:14px;margin-bottom:12px;"></div>
+      <div id="weatherForecast" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;"></div>
+      <p id="weatherErr" style="color:#ff6b6b;text-align:center;font-size:13px;"></p>
+    </div>
+  </div>
+
+  <!-- CLOCK -->
+  <div id="clock" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Clock</h2>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 16px;">
+      <div id="clockFace" style="font-size:58px;font-weight:200;letter-spacing:2px;">--:--:--</div>
+      <div id="clockDate" style="font-size:16px;opacity:0.6;"></div>
+      <div style="display:flex;gap:10px;">
+        <button class="save-btn" onclick="startStopwatch()" id="swBtn">▶ Start</button>
+        <button class="save-btn" onclick="resetStopwatch()">↺ Reset</button>
+      </div>
+      <div id="swDisplay" style="font-size:36px;font-weight:300;letter-spacing:2px;font-variant-numeric:tabular-nums;">00:00.0</div>
+      <div style="width:100%;background:rgba(255,255,255,0.08);border-radius:14px;padding:14px;">
+        <div style="font-size:12px;opacity:0.6;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Alarm</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="time" id="alarmTime" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:14px;outline:none;">
+          <button class="settings-btn" onclick="setAlarm()">Set</button>
+          <button class="settings-btn" onclick="clearAlarm()">Clear</button>
+        </div>
+        <div id="alarmStatus" style="font-size:13px;margin-top:6px;opacity:0.7;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MUSIC -->
+  <div id="music" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Music</h2>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 16px;overflow-y:auto;">
+      <div id="musicArt" style="width:160px;height:160px;background:rgba(255,255,255,0.1);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:64px;margin:6px 0 12px;">🎵</div>
+      <div id="musicTitle" style="font-size:17px;font-weight:600;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No track loaded</div>
+      <div id="musicArtist" style="font-size:13px;opacity:0.6;margin:4px 0 12px;">Add files to play</div>
+      <div style="width:100%;margin-bottom:10px;">
+        <input type="range" id="musicSeek" min="0" max="100" value="0" style="width:100%;" oninput="seekMusic(this.value)">
+        <div style="display:flex;justify-content:space-between;font-size:12px;opacity:0.5;">
+          <span id="musicCur">0:00</span><span id="musicDur">0:00</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">
+        <button class="save-btn" onclick="prevTrack()" style="font-size:20px;padding:10px 16px;">⏮</button>
+        <button class="save-btn" onclick="togglePlay()" id="playBtn" style="font-size:24px;padding:12px 20px;">▶</button>
+        <button class="save-btn" onclick="nextTrack()" style="font-size:20px;padding:10px 16px;">⏭</button>
+      </div>
+      <div style="width:100%;background:rgba(255,255,255,0.08);border-radius:14px;padding:12px;">
+        <div style="font-size:12px;opacity:0.6;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Library</div>
+        <label style="display:block;padding:8px;background:rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;text-align:center;font-size:14px;margin-bottom:8px;">
+          ＋ Add Music Files
+          <input type="file" accept="audio/*" multiple style="display:none;" onchange="loadMusicFiles(event)">
+        </label>
+        <div id="musicLibrary"></div>
+      </div>
+      <audio id="audioEl" onended="nextTrack()" ontimeupdate="updateMusicProgress()" onloadedmetadata="updateMusicDuration()"></audio>
+    </div>
+  </div>
+
+  <!-- MAPS -->
+  <div id="maps" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Maps</h2>
+    <div style="padding:10px 16px;flex:1;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+      <div style="display:flex;gap:8px;">
+        <input id="mapsSearch" class="settings-input" placeholder="Search a place..." style="flex:1;margin:0;" onkeydown="if(event.key==='Enter')mapsLookup()">
+        <button class="settings-btn" onclick="mapsLookup()">Go</button>
+      </div>
+      <div id="mapsResult" style="background:rgba(255,255,255,0.08);border-radius:14px;padding:12px;font-size:14px;line-height:1.6;min-height:40px;"></div>
+      <iframe id="mapsFrame" style="flex:1;min-height:280px;border-radius:14px;border:none;" src="about:blank"></iframe>
+    </div>
+  </div>
+
+  <!-- CAMERA -->
+  <div id="camera" class="screen">
+    <button class="back-btn" onclick="cameraBack()">← Back</button>
+    <h2>Camera</h2>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:0 10px 10px;gap:8px;overflow-y:auto;">
+      <video id="camVideo" autoplay playsinline muted style="width:100%;max-height:300px;border-radius:14px;background:#000;object-fit:cover;"></video>
+      <canvas id="camCanvas" style="display:none;"></canvas>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <button class="save-btn" onclick="switchCamera()" style="font-size:18px;padding:10px 16px;">🔄</button>
+        <button onclick="takePhoto()" style="width:64px;height:64px;border-radius:50%;background:white;border:4px solid rgba(255,255,255,0.5);font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;">📷</button>
+        <button class="save-btn" id="flashBtn" style="font-size:18px;padding:10px 16px;">⚡ Off</button>
+      </div>
+      <div id="camPhotos" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;"></div>
+      <p id="camErr" style="color:#ff6b6b;font-size:13px;text-align:center;"></p>
+    </div>
+  </div>
+
+  <!-- GALLERY -->
+  <div id="gallery" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Gallery</h2>
+    <div style="flex:1;display:flex;flex-direction:column;padding:0 10px 10px;gap:8px;overflow-y:auto;position:relative;">
+      <label style="display:block;padding:10px;background:rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;text-align:center;font-size:14px;">
+        ＋ Import Photos
+        <input type="file" accept="image/*" multiple style="display:none;" onchange="importGallery(event)">
+      </label>
+      <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;"></div>
+      <div id="galleryViewer" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.95);z-index:200;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
+        <button onclick="closeGalleryViewer()" style="position:absolute;top:10px;left:10px;background:rgba(255,255,255,0.2);border:none;color:white;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:13px;">✕</button>
+        <img id="galleryViewImg" style="max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px;">
+        <button onclick="deleteGalleryPhoto()" style="margin-top:10px;background:rgba(255,60,60,0.5);border:none;color:white;padding:8px 20px;border-radius:20px;cursor:pointer;">🗑 Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIL -->
+  <div id="mail" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Mail</h2>
+    <div style="flex:1;display:flex;flex-direction:column;padding:0 12px 10px;gap:8px;overflow-y:auto;">
+      <div style="display:flex;gap:8px;">
+        <button class="settings-btn" id="mailInboxBtn" onclick="mailTab('inbox')" style="flex:1;">📥 Inbox</button>
+        <button class="settings-btn" id="mailComposeBtn" onclick="mailTab('compose')" style="flex:1;">✏️ Compose</button>
+      </div>
+      <div id="mailInboxPane">
+        <div id="mailList"></div>
+        <div id="mailRead" style="display:none;background:rgba(255,255,255,0.08);border-radius:14px;padding:14px;margin-top:8px;">
+          <button onclick="document.getElementById('mailRead').style.display='none';document.getElementById('mailList').style.display='';" style="background:none;border:none;color:rgba(255,255,255,0.6);cursor:pointer;font-size:13px;margin-bottom:8px;">← All mail</button>
+          <div id="mailReadContent"></div>
+        </div>
+      </div>
+      <div id="mailComposePane" style="display:none;flex-direction:column;gap:8px;">
+        <input class="settings-input" id="mailTo" placeholder="To: email@example.com">
+        <input class="settings-input" id="mailSubject" placeholder="Subject">
+        <textarea id="mailBody" placeholder="Write your message..." style="width:100%;height:130px;padding:10px;border-radius:10px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:14px;resize:none;outline:none;"></textarea>
+        <button class="save-btn" onclick="sendMail()">📤 Send</button>
+        <p id="mailMsg" style="font-size:13px;text-align:center;min-height:16px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BROWSER -->
+  <div id="browser" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Browser</h2>
+    <div style="padding:0 10px 10px;display:flex;flex-direction:column;flex:1;gap:8px;">
+      <div style="display:flex;gap:6px;">
+        <input id="browserUrl" class="settings-input" placeholder="Enter a URL..." style="flex:1;margin:0;" onkeydown="if(event.key==='Enter')browserGo()">
+        <button class="settings-btn" onclick="browserGo()">Go</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://en.m.wikipedia.org')">Wikipedia</button>
+        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://lite.duckduckgo.com/lite')">DuckDuckGo</button>
+        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://news.ycombinator.com')">Hacker News</button>
+        <button class="settings-btn" style="font-size:12px;padding:5px 10px;" onclick="browserNav('https://www.bbc.com/news')">BBC News</button>
+      </div>
+      <iframe id="browserFrame" style="flex:1;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#fff;min-height:300px;" src="about:blank" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+      <p style="font-size:11px;opacity:0.35;text-align:center;margin:0;">Some sites block embedding — try Wikipedia or DuckDuckGo.</p>
+    </div>
+  </div>
+
+  <!-- GAMES -->
+  <div id="games" class="screen">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h2>Games</h2>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 14px 14px;overflow-y:auto;">
+      <div style="display:flex;gap:8px;width:100%;">
+        <button class="settings-btn" onclick="selectGame('snake')" style="flex:1;">🐍 Snake</button>
+        <button class="settings-btn" onclick="selectGame('2048')" style="flex:1;">🔢 2048</button>
+        <button class="settings-btn" onclick="selectGame('memory')" style="flex:1;">🃏 Memory</button>
+      </div>
+      <div id="gameArea" style="width:100%;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- STATUS BAR ---------- */
+function updateStatusBar() {
+  const n = new Date();
+  document.getElementById("timeBar").textContent =
+    n.getHours() + ":" + String(n.getMinutes()).padStart(2, "0");
+  document.getElementById("dateBar").textContent = n.toDateString();
+}
+setInterval(updateStatusBar, 1000);
+updateStatusBar();
+
+/* ---------- SCREEN LOGIC ---------- */
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const target = document.getElementById(id);
+  if (target) target.classList.add("active");
+  if (id === "home") renderHomeApps();
+  if (id === "notes") document.getElementById("notesText").value = localStorage.getItem("notes") || "";
+  if (id === "settings") loadSettings();
+  if (id === "store") renderStore();
+  if (id === "weather") loadWeather();
+  if (id === "clock") initClock();
+  if (id === "music") loadMusic();
+  if (id === "mail") loadMail();
+  if (id === "gallery") loadGallery();
+  if (id === "games") loadGames();
+}
+
+/* ---------- BOOT ---------- */
+setTimeout(() => {
+  if (!localStorage.getItem("setupDone") || !localStorage.getItem("beePin")) {
+    step = 0;
+    showScreen("setup");
+    renderSetup();
+  } else {
+    initLockScreen();
+    showScreen("lock");
+  }
+}, 1200);
+
+/* ---------- SETUP ---------- */
+let step = 0;
+function renderSetup() {
+  const el = document.getElementById("setupStep");
+  const dots = `<div class="progress-dots">
+    <span class="${step>=0?'active':''}"></span>
+    <span class="${step>=1?'active':''}"></span>
+    <span class="${step>=2?'active':''}"></span>
+    <span class="${step>=3?'active':''}"></span>
+  </div>`;
+
+  if (step === 0) {
+    el.innerHTML = dots + `<h2>Welcome to BeeOS 🐝</h2><p style="opacity:0.6;margin-bottom:20px;">Let's get you set up</p><button onclick="step++;renderSetup()">Get Started</button>`;
+  } else if (step === 1) {
+    el.innerHTML = dots + `<h2>Time Zone</h2>
+      <select id="tz">
+        <option>EST</option><option>CST</option><option>MST</option><option>PST</option>
+        <option>GMT</option><option>CET</option><option>IST</option><option>JST</option>
+      </select>
+      <button onclick="saveTZ()">Next →</button>`;
+  } else if (step === 2) {
+    el.innerHTML = dots + `<h2>Set a PIN</h2>
+      <p style="opacity:0.6;font-size:13px;margin-bottom:12px;">Minimum 4 digits</p>
+      <input id="pinA" type="password" placeholder="Create PIN" maxlength="8" inputmode="numeric">
+      <input id="pinB" type="password" placeholder="Confirm PIN" maxlength="8" inputmode="numeric">
+      <p id="setupPinErr" style="color:#ff6b6b;font-size:13px;min-height:18px;"></p>
+      <button onclick="saveSetupPin()">Next →</button>`;
+  } else if (step === 3) {
+    el.innerHTML = dots + `<h2>Your Name</h2>
+      <input id="nameInput" placeholder="Enter your name">
+      <button onclick="finishSetup()">Finish ✓</button>`;
+  }
+}
+
+function saveTZ() {
+  const tz = document.getElementById("tz").value;
+  localStorage.setItem("beeTZ", tz);
+  step++; renderSetup();
+}
+
+function saveSetupPin() {
+  const a = document.getElementById("pinA").value;
+  const b = document.getElementById("pinB").value;
+  const err = document.getElementById("setupPinErr");
+  if (!/^\d+$/.test(a)) { err.textContent = "PIN must be digits only"; return; }
+  if (a.length < 4) { err.textContent = "PIN must be at least 4 digits"; return; }
+  if (a !== b) { err.textContent = "PINs don't match"; return; }
+  localStorage.setItem("beePin", a);
+  step++; renderSetup();
+}
+
+function finishSetup() {
+  const name = document.getElementById("nameInput").value.trim() || "User";
+  const user = { name, tz: localStorage.getItem("beeTZ") || "EST" };
+  localStorage.setItem("beeUser", JSON.stringify(user));
+  localStorage.setItem("setupDone", "true");
+  initLockScreen();
+  showScreen("lock");
+}
+
+/* ---------- LOCK / PIN ---------- */
+let enteredPin = "";
+
+function initLockScreen() {
+  enteredPin = "";
+  updatePinDots();
+  document.getElementById("pinError").textContent = "";
+  try {
+    const user = JSON.parse(localStorage.getItem("beeUser") || "{}");
+    if (user.name) {
+      document.getElementById("lockGreet").textContent = "Hi, " + user.name;
+    }
+  } catch (e) {}
+}
+
+function press(n) {
+  const realPin = localStorage.getItem("beePin");
+  if (!realPin) { alert("No PIN set. Restarting setup."); redoSetup(); return; }
+  if (enteredPin.length >= realPin.length) return;
+
+  enteredPin += String(n);
+  updatePinDots();
+
+  if (enteredPin.length === realPin.length) {
+    setTimeout(() => {
+      if (enteredPin === realPin) {
+        document.getElementById("pinError").textContent = "";
+        enteredPin = "";
+        updatePinDots();
+        showScreen("home");
+      } else {
+        document.getElementById("pinError").textContent = "Incorrect PIN. Try again.";
+        enteredPin = "";
+        shakeDots();
+        updatePinDots();
+      }
+    }, 80);
+  }
+}
+
+function pressBackspace() {
+  if (enteredPin.length > 0) {
+    enteredPin = enteredPin.slice(0, -1);
+    updatePinDots();
+    document.getElementById("pinError").textContent = "";
+  }
+}
+
+function updatePinDots() {
+  const realPin = localStorage.getItem("beePin") || "0000";
+  const len = realPin.length;
+  const filled = enteredPin.length;
+  let html = "";
+  for (let i = 0; i < len; i++) {
+    html += `<div class="pin-dot${i < filled ? " filled" : ""}"></div>`;
+  }
+  document.getElementById("pinDots").innerHTML = html;
+}
+
+function shakeDots() {
+  const el = document.getElementById("pinDots");
+  el.style.animation = "none";
+  el.offsetHeight;
+  el.style.animation = "shake 0.4s ease";
+}
+
+/* add shake animation */
+const shakeStyle = document.createElement("style");
+shakeStyle.textContent = `@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}`;
+document.head.appendChild(shakeStyle);
+
+/* ---------- APPS ---------- */
+const allApps = [
+  { name:"Notes", icon:"📝", id:"notes" },
+  { name:"Calc", icon:"🧮", id:"calc" },
+  { name:"Settings", icon:"⚙️", id:"settings" },
+  { name:"App Store", icon:"🛒", id:"store" },
+  { name:"Weather", icon:"🌤️", id:"weather" },
+  { name:"Music", icon:"🎵", id:"music" },
+  { name:"Maps", icon:"🗺️", id:"maps" },
+  { name:"Camera", icon:"📷", id:"camera" },
+  { name:"Gallery", icon:"🖼️", id:"gallery" },
+  { name:"Mail", icon:"✉️", id:"mail" },
+  { name:"Clock", icon:"⏰", id:"clock" },
+  { name:"Browser", icon:"🌐", id:"browser" },
+  { name:"Games", icon:"🎮", id:"games" },
+];
+const defaultApps = ["Notes","Calc","Settings","App Store"];
+
+function renderHomeApps() {
+  const container = document.getElementById("homeApps");
+  container.innerHTML = "";
+  let installed = JSON.parse(localStorage.getItem("installedApps") || "[]");
+  const visible = [...new Set([...defaultApps, ...installed])];
+  visible.forEach(name => {
+    const app = allApps.find(a => a.name === name);
+    if (!app) return;
+    const div = document.createElement("div");
+    div.className = "app";
+    div.innerHTML = `<div class="icon">${app.icon}</div><span>${app.name}</span>`;
+    div.onclick = () => openApp(app.id, app.name);
+    container.appendChild(div);
+  });
+}
+
+function openApp(id, name) {
+  showScreen(id);
+}
+
+/* ---------- NOTES ---------- */
+function saveNotes() {
+  localStorage.setItem("notes", document.getElementById("notesText").value);
+  const btn = document.querySelector("#notes .save-btn");
+  btn.textContent = "✓ Saved!";
+  setTimeout(() => btn.textContent = "💾 Save", 1500);
+}
+
+/* ---------- CALCULATOR ---------- */
+let calcExpr = "";
+function calcInput(val) {
+  calcExpr += val;
+  document.getElementById("calcInput").value = calcExpr;
+}
+function calcClear() {
+  calcExpr = "";
+  document.getElementById("calcInput").value = "";
+  document.getElementById("calcResult").textContent = "";
+}
+function calculate() {
+  try {
+    const safe = calcExpr.replace(/[^0-9+\-*/.%()]/g, "");
+    const result = Function('"use strict"; return (' + safe + ')')();
+    document.getElementById("calcResult").textContent = "= " + result;
+    calcExpr = String(result);
+    document.getElementById("calcInput").value = calcExpr;
+  } catch {
+    document.getElementById("calcResult").textContent = "Error";
+    calcExpr = "";
+    document.getElementById("calcInput").value = "";
+  }
+}
+
+/* ---------- SETTINGS ---------- */
+function loadSettings() {
+  const d = JSON.parse(localStorage.getItem("beeUser") || "{}");
+  document.getElementById("username").value = d.name || "";
+  document.getElementById("contrast").checked = document.body.classList.contains("high-contrast");
+  document.getElementById("fontSize").checked = document.body.classList.contains("large-font");
+  document.getElementById("newPin").value = "";
+  document.getElementById("confirmPin").value = "";
+  document.getElementById("pinChangeMsg").textContent = "";
+}
+
+function saveName() {
+  const d = JSON.parse(localStorage.getItem("beeUser") || "{}");
+  d.name = document.getElementById("username").value.trim();
+  localStorage.setItem("beeUser", JSON.stringify(d));
+  alert("Name saved!");
+}
+
+function changePin() {
+  const p1 = document.getElementById("newPin").value;
+  const p2 = document.getElementById("confirmPin").value;
+  const msg = document.getElementById("pinChangeMsg");
+  if (!/^\d+$/.test(p1)) { msg.style.color="#ff6b6b"; msg.textContent="PIN must be digits only"; return; }
+  if (p1.length < 4) { msg.style.color="#ff6b6b"; msg.textContent="PIN must be at least 4 digits"; return; }
+  if (p1 !== p2) { msg.style.color="#ff6b6b"; msg.textContent="PINs don't match"; return; }
+  localStorage.setItem("beePin", p1);
+  document.getElementById("newPin").value = "";
+  document.getElementById("confirmPin").value = "";
+  msg.style.color="#34c759"; msg.textContent="PIN updated!";
+}
+
+function changeBG(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    document.getElementById("phone").style.backgroundImage = `url(${r.result})`;
+    localStorage.setItem("wallpaper", r.result);
+  };
+  r.readAsDataURL(file);
+}
+
+function clearBG() {
+  document.getElementById("phone").style.backgroundImage = "";
+  localStorage.removeItem("wallpaper");
+}
+
+function toggleContrast() { document.body.classList.toggle("high-contrast"); }
+function toggleFontSize() { document.body.classList.toggle("large-font"); }
+
+function confirmReset() {
+  if (confirm("Factory reset BeeOS? All data will be erased.")) redoSetup();
+}
+
+/* ---------- WALLPAPER RESTORE ---------- */
+const savedBG = localStorage.getItem("wallpaper");
+if (savedBG) document.getElementById("phone").style.backgroundImage = `url(${savedBG})`;
+
+/* ---------- RESET ---------- */
+function redoSetup() {
+  localStorage.clear();
+  location.reload();
+}
+
+/* ---------- APP STORE ---------- */
+const storeApps = [
+  { name:"Weather", icon:"🌤️" },
+  { name:"Music", icon:"🎵" },
+  { name:"Maps", icon:"🗺️" },
+  { name:"Camera", icon:"📷" },
+  { name:"Gallery", icon:"🖼️" },
+  { name:"Mail", icon:"✉️" },
+  { name:"Clock", icon:"⏰" },
+  { name:"Browser", icon:"🌐" },
+  { name:"Games", icon:"🎮" },
+];
+
+function renderStore() {
+  const container = document.getElementById("storeApps");
+  container.innerHTML = "";
+  let installed = JSON.parse(localStorage.getItem("installedApps") || "[]");
+  storeApps.forEach(app => {
+    const div = document.createElement("div");
+    div.className = "store-card";
+    const isInstalled = installed.includes(app.name);
+    div.innerHTML = `
+      <div class="icon">${app.icon}</div>
+      <span>${app.name}</span>
+      <button class="install-btn ${isInstalled ? 'remove' : 'install'}"
+        onclick="${isInstalled ? 'removeApp' : 'installApp'}('${app.name}')">
+        ${isInstalled ? "Remove" : "Install"}
+      </button>`;
+    container.appendChild(div);
+  });
+}
+
+function installApp(name) {
+  let installed = JSON.parse(localStorage.getItem("installedApps") || "[]");
+  if (!installed.includes(name)) {
+    installed.push(name);
+    localStorage.setItem("installedApps", JSON.stringify(installed));
+    renderStore();
+    renderHomeApps();
+  }
+}
+
+function removeApp(name) {
+  let installed = JSON.parse(localStorage.getItem("installedApps") || "[]");
+  installed = installed.filter(a => a !== name);
+  localStorage.setItem("installedApps", JSON.stringify(installed));
+  renderStore();
+  renderHomeApps();
+}
+
+/* ========== WEATHER ========== */
+const weatherIcons = { 0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",53:"🌦️",55:"🌦️",61:"🌧️",63:"🌧️",65:"🌧️",71:"🌨️",73:"🌨️",75:"🌨️",80:"🌦️",81:"🌦️",82:"🌦️",95:"⛈️",96:"⛈️",99:"⛈️" };
+const weatherDescs = { 0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Foggy",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",71:"Light snow",73:"Snow",75:"Heavy snow",80:"Showers",81:"Showers",82:"Heavy showers",95:"Thunderstorm",96:"Thunderstorm",99:"Thunderstorm" };
+const weekdays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function loadWeather() {
+  document.getElementById("weatherDesc").textContent = "Locating...";
+  document.getElementById("weatherErr").textContent = "";
+  if (!navigator.geolocation) { document.getElementById("weatherErr").textContent = "Geolocation not supported."; return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    fetchWeather(pos.coords.latitude, pos.coords.longitude);
+  }, () => {
+    fetchWeather(43.1, -75.23); // fallback: Oneonta NY
+    document.getElementById("weatherCity").textContent = "Oneonta, NY (fallback)";
+  });
+}
+
+function fetchWeather(lat, lon) {
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=auto&forecast_days=5`)
+    .then(r => r.json()).then(data => {
+      const cw = data.current_weather;
+      const code = cw.weathercode;
+      document.getElementById("weatherIcon").textContent = weatherIcons[code] || "🌡️";
+      document.getElementById("weatherTemp").textContent = Math.round(cw.temperature) + "°F";
+      document.getElementById("weatherDesc").textContent = weatherDescs[code] || "Unknown";
+      const hi = Math.round(data.daily.temperature_2m_max[0]);
+      const lo = Math.round(data.daily.temperature_2m_min[0]);
+      const wind = Math.round(cw.windspeed);
+      document.getElementById("weatherDetails").innerHTML = `
+        <div style="text-align:center"><div style="font-size:11px;opacity:0.5;">HIGH</div><div style="font-size:18px">${hi}°</div></div>
+        <div style="text-align:center"><div style="font-size:11px;opacity:0.5;">LOW</div><div style="font-size:18px">${lo}°</div></div>
+        <div style="text-align:center"><div style="font-size:11px;opacity:0.5;">WIND</div><div style="font-size:18px">${wind}mph</div></div>`;
+      const fc = document.getElementById("weatherForecast");
+      fc.innerHTML = "";
+      for (let i = 1; i < 5; i++) {
+        const d = new Date(); d.setDate(d.getDate() + i);
+        const ic = weatherIcons[data.daily.weathercode[i]] || "🌡️";
+        const h = Math.round(data.daily.temperature_2m_max[i]);
+        const l = Math.round(data.daily.temperature_2m_min[i]);
+        fc.innerHTML += `<div style="min-width:70px;background:rgba(255,255,255,0.08);border-radius:12px;padding:10px;text-align:center;flex-shrink:0;">
+          <div style="font-size:12px;opacity:0.6;">${weekdays[d.getDay()]}</div>
+          <div style="font-size:24px;margin:4px 0;">${ic}</div>
+          <div style="font-size:13px;">${h}°</div>
+          <div style="font-size:12px;opacity:0.5;">${l}°</div>
+        </div>`;
+      }
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+        .then(r=>r.json()).then(geo=>{
+          const city = geo.address.city || geo.address.town || geo.address.village || "";
+          const state = geo.address.state || "";
+          document.getElementById("weatherCity").textContent = city ? `${city}, ${state}` : "";
+        }).catch(()=>{});
+    }).catch(() => { document.getElementById("weatherErr").textContent = "Could not load weather."; });
+}
+
+/* ========== CLOCK ========== */
+let clockInterval = null, swInterval = null, swRunning = false, swMs = 0, swStart = 0;
+let alarmTime = null, alarmFired = false;
+
+function initClock() {
+  if (clockInterval) clearInterval(clockInterval);
+  clockInterval = setInterval(tickClock, 500);
+  tickClock();
+  const saved = localStorage.getItem("beeAlarm");
+  if (saved) { alarmTime = saved; document.getElementById("alarmStatus").textContent = "⏰ Alarm set: " + saved; }
+}
+
+function tickClock() {
+  const n = new Date();
+  document.getElementById("clockFace").textContent =
+    String(n.getHours()).padStart(2,"0") + ":" +
+    String(n.getMinutes()).padStart(2,"0") + ":" +
+    String(n.getSeconds()).padStart(2,"0");
+  document.getElementById("clockDate").textContent = n.toDateString();
+  if (alarmTime) {
+    const [ah, am] = alarmTime.split(":").map(Number);
+    if (n.getHours() === ah && n.getMinutes() === am && n.getSeconds() === 0) {
+      alert("⏰ Alarm! " + alarmTime);
+    }
+  }
+}
+
+function startStopwatch() {
+  if (swRunning) {
+    swRunning = false; swMs += Date.now() - swStart;
+    clearInterval(swInterval);
+    document.getElementById("swBtn").textContent = "▶ Start";
+  } else {
+    swRunning = true; swStart = Date.now();
+    swInterval = setInterval(() => {
+      const elapsed = swMs + (Date.now() - swStart);
+      const min = Math.floor(elapsed / 60000);
+      const sec = Math.floor((elapsed % 60000) / 1000);
+      const tenth = Math.floor((elapsed % 1000) / 100);
+      document.getElementById("swDisplay").textContent =
+        String(min).padStart(2,"0") + ":" + String(sec).padStart(2,"0") + "." + tenth;
+    }, 100);
+    document.getElementById("swBtn").textContent = "⏸ Pause";
+  }
+}
+
+function resetStopwatch() {
+  swRunning = false; swMs = 0; clearInterval(swInterval);
+  document.getElementById("swDisplay").textContent = "00:00.0";
+  document.getElementById("swBtn").textContent = "▶ Start";
+}
+
+function setAlarm() {
+  const val = document.getElementById("alarmTime").value;
+  if (!val) return;
+  alarmTime = val;
+  localStorage.setItem("beeAlarm", val);
+  document.getElementById("alarmStatus").textContent = "⏰ Alarm set for " + val;
+}
+
+function clearAlarm() {
+  alarmTime = null;
+  localStorage.removeItem("beeAlarm");
+  document.getElementById("alarmStatus").textContent = "No alarm set.";
+}
+
+/* ========== MUSIC ========== */
+let musicTracks = [], musicIndex = 0, musicPlaying = false;
+
+function loadMusic() {
+  renderMusicLibrary();
+}
+
+function loadMusicFiles(event) {
+  const files = Array.from(event.target.files);
+  files.forEach(file => {
+    const url = URL.createObjectURL(file);
+    const name = file.name.replace(/\.[^.]+$/, "");
+    musicTracks.push({ name, url });
+  });
+  renderMusicLibrary();
+  if (musicTracks.length > 0 && !musicPlaying) loadTrack(musicTracks.length - files.length);
+}
+
+function renderMusicLibrary() {
+  const lib = document.getElementById("musicLibrary");
+  lib.innerHTML = "";
+  if (musicTracks.length === 0) { lib.innerHTML = `<p style="opacity:0.4;font-size:13px;text-align:center;">No tracks yet</p>`; return; }
+  musicTracks.forEach((t, i) => {
+    const row = document.createElement("div");
+    row.style = "padding:8px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;" + (i === musicIndex ? "background:rgba(255,255,255,0.15);" : "");
+    row.innerHTML = `<span style="opacity:0.5;min-width:18px;">${i+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.name}</span>`;
+    row.onclick = () => { loadTrack(i); playTrack(); };
+    lib.appendChild(row);
+  });
+}
+
+function loadTrack(i) {
+  if (i < 0 || i >= musicTracks.length) return;
+  musicIndex = i;
+  const audio = document.getElementById("audioEl");
+  audio.src = musicTracks[i].url;
+  document.getElementById("musicTitle").textContent = musicTracks[i].name;
+  document.getElementById("musicArtist").textContent = "Local file";
+  renderMusicLibrary();
+}
+
+function playTrack() {
+  const audio = document.getElementById("audioEl");
+  audio.play(); musicPlaying = true;
+  document.getElementById("playBtn").textContent = "⏸";
+}
+
+function togglePlay() {
+  const audio = document.getElementById("audioEl");
+  if (!audio.src || audio.src === location.href) { if (musicTracks.length) { loadTrack(0); playTrack(); } return; }
+  if (musicPlaying) { audio.pause(); musicPlaying = false; document.getElementById("playBtn").textContent = "▶"; }
+  else { audio.play(); musicPlaying = true; document.getElementById("playBtn").textContent = "⏸"; }
+}
+
+function prevTrack() { if (musicTracks.length) { loadTrack((musicIndex - 1 + musicTracks.length) % musicTracks.length); if (musicPlaying) playTrack(); } }
+function nextTrack() { if (musicTracks.length) { loadTrack((musicIndex + 1) % musicTracks.length); if (musicPlaying) playTrack(); } }
+
+function seekMusic(val) {
+  const audio = document.getElementById("audioEl");
+  if (audio.duration) audio.currentTime = (val / 100) * audio.duration;
+}
+
+function updateMusicProgress() {
+  const audio = document.getElementById("audioEl");
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById("musicSeek").value = pct;
+  document.getElementById("musicCur").textContent = fmtTime(audio.currentTime);
+}
+
+function updateMusicDuration() {
+  document.getElementById("musicDur").textContent = fmtTime(document.getElementById("audioEl").duration);
+}
+
+function fmtTime(s) {
+  if (!s || isNaN(s)) return "0:00";
+  return Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2,"0");
+}
+
+/* ========== MAPS ========== */
+function mapsLookup() {
+  const q = document.getElementById("mapsSearch").value.trim();
+  if (!q) return;
+  document.getElementById("mapsResult").textContent = "Searching...";
+  fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`)
+    .then(r => r.json()).then(data => {
+      if (!data.length) { document.getElementById("mapsResult").textContent = "No results found."; return; }
+      const p = data[0];
+      document.getElementById("mapsResult").textContent = `📍 ${p.display_name}`;
+      document.getElementById("mapsFrame").src =
+        `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(p.lon)-0.05},${parseFloat(p.lat)-0.05},${parseFloat(p.lon)+0.05},${parseFloat(p.lat)+0.05}&layer=mapnik&marker=${p.lat},${p.lon}`;
+    }).catch(() => { document.getElementById("mapsResult").textContent = "Map lookup failed."; });
+}
+
+/* ========== CAMERA ========== */
+let camStream = null, camFacing = "environment";
+let capturedPhotos = [];
+
+function cameraBack() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  showScreen("home");
+}
+
+function startCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: false })
+    .then(stream => {
+      camStream = stream;
+      const vid = document.getElementById("camVideo");
+      vid.srcObject = stream;
+      document.getElementById("camErr").textContent = "";
+    }).catch(err => {
+      document.getElementById("camErr").textContent = "Camera access denied. Please allow camera permission.";
+    });
+}
+
+function switchCamera() {
+  camFacing = camFacing === "environment" ? "user" : "environment";
+  startCamera();
+}
+
+function takePhoto() {
+  const vid = document.getElementById("camVideo");
+  const canvas = document.getElementById("camCanvas");
+  canvas.width = vid.videoWidth || 640;
+  canvas.height = vid.videoHeight || 480;
+  canvas.getContext("2d").drawImage(vid, 0, 0);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+  capturedPhotos.push(dataUrl);
+  renderCamPhotos();
+}
+
+function renderCamPhotos() {
+  const container = document.getElementById("camPhotos");
+  container.innerHTML = "";
+  capturedPhotos.slice(-6).forEach((url, i) => {
+    const img = document.createElement("img");
+    img.src = url;
+    img.style = "width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid rgba(255,255,255,0.2);";
+    img.onclick = () => {
+      const a = document.createElement("a"); a.href = url; a.download = `photo_${i+1}.jpg`; a.click();
+    };
+    container.appendChild(img);
+  });
+}
+
+function toggleFlash() {
+  const btn = document.getElementById("flashBtn");
+  btn.textContent = btn.textContent.includes("Off") ? "⚡ On" : "⚡ Off";
+}
+
+/* start camera when camera screen opens */
+const _origShowScreen = showScreen;
+showScreen = function(id) {
+  _origShowScreen(id);
+  if (id === "camera") setTimeout(startCamera, 100);
+  if (id !== "camera" && camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+};
+
+/* ========== GALLERY ========== */
+let galleryPhotos = [], galleryViewIndex = 0;
+
+function loadGallery() {
+  galleryPhotos = JSON.parse(localStorage.getItem("beeGallery") || "[]");
+  renderGallery();
+}
+
+function importGallery(event) {
+  const files = Array.from(event.target.files);
+  let loaded = 0;
+  files.forEach(file => {
+    const r = new FileReader();
+    r.onload = () => {
+      galleryPhotos.push(r.result);
+      loaded++;
+      if (loaded === files.length) { saveGallery(); renderGallery(); }
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+function saveGallery() {
+  try { localStorage.setItem("beeGallery", JSON.stringify(galleryPhotos)); } catch(e) {}
+}
+
+function renderGallery() {
+  const grid = document.getElementById("galleryGrid");
+  grid.innerHTML = "";
+  if (!galleryPhotos.length) { grid.innerHTML = `<p style="opacity:0.4;font-size:13px;text-align:center;grid-column:1/-1;padding:20px 0;">No photos yet</p>`; return; }
+  galleryPhotos.forEach((url, i) => {
+    const img = document.createElement("img");
+    img.src = url;
+    img.style = "width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;";
+    img.onclick = () => openGalleryViewer(i);
+    grid.appendChild(img);
+  });
+}
+
+function openGalleryViewer(i) {
+  galleryViewIndex = i;
+  document.getElementById("galleryViewImg").src = galleryPhotos[i];
+  const v = document.getElementById("galleryViewer");
+  v.style.display = "flex";
+}
+
+function closeGalleryViewer() {
+  document.getElementById("galleryViewer").style.display = "none";
+}
+
+function deleteGalleryPhoto() {
+  galleryPhotos.splice(galleryViewIndex, 1);
+  saveGallery(); renderGallery(); closeGalleryViewer();
+}
+
+/* ========== MAIL ========== */
+function loadMail() {
+  mailTab("inbox");
+  renderMailInbox();
+}
+
+function mailTab(tab) {
+  document.getElementById("mailInboxPane").style.display = tab === "inbox" ? "" : "none";
+  document.getElementById("mailComposePane").style.display = tab === "compose" ? "flex" : "none";
+  document.getElementById("mailMsg").textContent = "";
+}
+
+function renderMailInbox() {
+  const mails = JSON.parse(localStorage.getItem("beeMails") || "[]");
+  const list = document.getElementById("mailList");
+  list.innerHTML = "";
+  document.getElementById("mailRead").style.display = "none";
+  if (!mails.length) {
+    list.innerHTML = `<div style="text-align:center;opacity:0.4;padding:30px 0;font-size:14px;">No messages yet.<br>Try composing one!</div>`;
+    return;
+  }
+  [...mails].reverse().forEach((m, ri) => {
+    const i = mails.length - 1 - ri;
+    const row = document.createElement("div");
+    row.style = "padding:12px;background:rgba(255,255,255,0.07);border-radius:12px;margin-bottom:6px;cursor:pointer;";
+    row.innerHTML = `<div style="font-size:13px;font-weight:600;margin-bottom:2px;">${m.to}</div>
+      <div style="font-size:14px;margin-bottom:2px;">${m.subject}</div>
+      <div style="font-size:12px;opacity:0.5;">${m.date}</div>`;
+    row.onclick = () => readMail(i);
+    list.appendChild(row);
+  });
+}
+
+function readMail(i) {
+  const mails = JSON.parse(localStorage.getItem("beeMails") || "[]");
+  const m = mails[i];
+  document.getElementById("mailReadContent").innerHTML = `
+    <div style="font-size:13px;opacity:0.5;margin-bottom:4px;">${m.date}</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:2px;">To: ${m.to}</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:12px;">${m.subject}</div>
+    <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.body}</div>`;
+  document.getElementById("mailList").style.display = "none";
+  document.getElementById("mailRead").style.display = "";
+}
+
+function sendMail() {
+  const to = document.getElementById("mailTo").value.trim();
+  const sub = document.getElementById("mailSubject").value.trim();
+  const body = document.getElementById("mailBody").value.trim();
+  const msg = document.getElementById("mailMsg");
+  if (!to || !sub) { msg.style.color="#ff6b6b"; msg.textContent="Fill in To and Subject."; return; }
+  const mails = JSON.parse(localStorage.getItem("beeMails") || "[]");
+  mails.push({ to, subject: sub, body, date: new Date().toLocaleString() });
+  localStorage.setItem("beeMails", JSON.stringify(mails));
+  document.getElementById("mailTo").value = "";
+  document.getElementById("mailSubject").value = "";
+  document.getElementById("mailBody").value = "";
+  msg.style.color="#34c759"; msg.textContent="✓ Message saved to inbox!";
+  setTimeout(() => { mailTab("inbox"); renderMailInbox(); }, 1200);
+}
+
+/* ========== BROWSER ========== */
+function browserGo() {
+  let url = document.getElementById("browserUrl").value.trim();
+  if (!url) return;
+  if (!url.startsWith("http")) url = "https://" + url;
+  document.getElementById("browserUrl").value = url;
+  document.getElementById("browserFrame").src = url;
+}
+
+function browserNav(url) {
+  document.getElementById("browserUrl").value = url;
+  document.getElementById("browserFrame").src = url;
+}
+
+/* ========== GAMES ========== */
+let activeGame = null;
+
+function loadGames() {
+  document.getElementById("gameArea").innerHTML = `<p style="text-align:center;opacity:0.5;font-size:14px;padding:20px 0;">Pick a game above!</p>`;
+}
+
+function selectGame(game) {
+  activeGame = game;
+  if (game === "snake") startSnake();
+  else if (game === "2048") start2048();
+  else if (game === "memory") startMemory();
+}
+
+/* --- SNAKE --- */
+let snakeGame = null;
+function startSnake() {
+  const area = document.getElementById("gameArea");
+  const SZ = 20, COLS = 17, ROWS = 17;
+  let snake = [{x:8,y:8}], dir = {x:1,y:0}, food = {x:5,y:5}, score = 0, alive = true, loop;
+
+  function rndFood() {
+    let f;
+    do { f = {x:Math.floor(Math.random()*COLS), y:Math.floor(Math.random()*ROWS)}; }
+    while (snake.some(s=>s.x===f.x&&s.y===f.y));
+    return f;
+  }
+
+  area.innerHTML = `
+    <div style="text-align:center;margin-bottom:6px;font-size:15px;">Score: <span id="snakeScore">0</span></div>
+    <canvas id="snakeCanvas" width="${COLS*SZ}" height="${ROWS*SZ}" style="border-radius:12px;display:block;margin:auto;touch-action:none;max-width:100%;"></canvas>
+    <div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin-top:10px;">
+      <div></div>
+      <button class="save-btn" style="padding:10px;" ontouchstart="setDir(0,-1)" onclick="setDir(0,-1)">▲</button>
+      <div></div>
+      <button class="save-btn" style="padding:10px;" ontouchstart="setDir(-1,0)" onclick="setDir(-1,0)">◀</button>
+      <button class="save-btn" style="padding:10px;" ontouchstart="setDir(0,1)" onclick="setDir(0,1)">▼</button>
+      <button class="save-btn" style="padding:10px;" ontouchstart="setDir(1,0)" onclick="setDir(1,0)">▶</button>
+    </div>`;
+
+  window.setDir = (dx, dy) => { if(!(dx===-dir.x&&dy===0)&&!(dy===-dir.y&&dx===0)) { dir={x:dx,y:dy}; } };
+
+  const canvas = document.getElementById("snakeCanvas");
+  const ctx = canvas.getContext("2d");
+
+  function draw() {
+    ctx.fillStyle = "#1a1a2e"; ctx.fillRect(0,0,COLS*SZ,ROWS*SZ);
+    snake.forEach((s,i) => {
+      ctx.fillStyle = i===0?"#34c759":"rgba(52,199,89,0.7)";
+      ctx.beginPath(); ctx.roundRect(s.x*SZ+1,s.y*SZ+1,SZ-2,SZ-2,4); ctx.fill();
+    });
+    ctx.fillStyle = "#ff6b6b";
+    ctx.beginPath(); ctx.arc(food.x*SZ+SZ/2,food.y*SZ+SZ/2,SZ/2-2,0,Math.PI*2); ctx.fill();
+  }
+
+  function tick() {
+    if (!alive) return;
+    const head = {x: snake[0].x+dir.x, y: snake[0].y+dir.y};
+    if (head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some(s=>s.x===head.x&&s.y===head.y)) {
+      alive=false; clearInterval(loop);
+      ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(0,0,COLS*SZ,ROWS*SZ);
+      ctx.fillStyle="white"; ctx.font="bold 20px Arial"; ctx.textAlign="center";
+      ctx.fillText("Game Over! Score: "+score, COLS*SZ/2, ROWS*SZ/2);
+      return;
+    }
+    snake.unshift(head);
+    if (head.x===food.x&&head.y===food.y) { score++; document.getElementById("snakeScore").textContent=score; food=rndFood(); }
+    else snake.pop();
+    draw();
+  }
+
+  food = rndFood();
+  loop = setInterval(tick, 150);
+  draw();
+}
+
+/* --- 2048 --- */
+function start2048() {
+  const area = document.getElementById("gameArea");
+  let board = Array.from({length:4},()=>Array(4).fill(0)), score = 0;
+
+  function addTile() {
+    const empty = [];
+    board.forEach((r,i)=>r.forEach((v,j)=>{ if(!v) empty.push([i,j]); }));
+    if (!empty.length) return;
+    const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+    board[r][c] = Math.random()<0.9?2:4;
+  }
+
+  function slide(row) {
+    let r = row.filter(v=>v), changed = false;
+    for (let i=0;i<r.length-1;i++) {
+      if (r[i]===r[i+1]) { r[i]*=2; score+=r[i]; r.splice(i+1,1); changed=true; }
+    }
+    while (r.length<4) r.push(0);
+    return { row: r, changed: changed || row.join()!==r.join() };
+  }
+
+  function move(direction) {
+    let moved = false;
+    if (direction==="left") board = board.map(r=>{const s=slide(r);if(s.changed)moved=true;return s.row;});
+    else if (direction==="right") board = board.map(r=>{const rev=r.slice().reverse();const s=slide(rev);if(s.changed)moved=true;return s.row.reverse();});
+    else if (direction==="up") {
+      for(let c=0;c<4;c++){const col=board.map(r=>r[c]);const s=slide(col);if(s.changed)moved=true;s.row.forEach((v,r)=>board[r][c]=v);}
+    } else {
+      for(let c=0;c<4;c++){const col=board.map(r=>r[c]).reverse();const s=slide(col);if(s.changed)moved=true;s.row.forEach((v,r)=>board[3-r][c]=v);}
+    }
+    if (moved) { addTile(); render2048(); }
+  }
+
+  const colors = {0:"#3a3a5c",2:"#eee4da",4:"#ede0c8",8:"#f2b179",16:"#f59563",32:"#f67c5f",64:"#f65e3b",128:"#edcf72",256:"#edcc61",512:"#edc850",1024:"#edc53f",2048:"#edc22e"};
+  const textColors = {0:"transparent",2:"#776e65",4:"#776e65"};
+
+  function render2048() {
+    document.getElementById("score2048").textContent = score;
+    const grid = document.getElementById("grid2048");
+    grid.innerHTML = "";
+    board.forEach(row => row.forEach(val => {
+      const cell = document.createElement("div");
+      cell.style = `width:62px;height:62px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:${val>99?val>999?14:16:20}px;font-weight:700;background:${colors[val]||"#3d3a5c"};color:${textColors[val]||"#fff"};`;
+      cell.textContent = val || "";
+      grid.appendChild(cell);
+    }));
+  }
+
+  area.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:24px;font-weight:700;">2048</div>
+      <div>Score: <span id="score2048">0</span></div>
+      <button class="settings-btn" onclick="start2048()">New</button>
+    </div>
+    <div id="grid2048" style="display:grid;grid-template-columns:repeat(4,62px);gap:6px;justify-content:center;background:rgba(255,255,255,0.05);padding:10px;border-radius:14px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin-top:12px;">
+      <div></div>
+      <button class="save-btn" style="padding:10px;" onclick="move2048('up')">▲</button><div></div>
+      <button class="save-btn" style="padding:10px;" onclick="move2048('left')">◀</button>
+      <button class="save-btn" style="padding:10px;" onclick="move2048('down')">▼</button>
+      <button class="save-btn" style="padding:10px;" onclick="move2048('right')">▶</button>
+    </div>`;
+
+  window.move2048 = move;
+  addTile(); addTile(); render2048();
+}
+
+/* --- MEMORY --- */
+function startMemory() {
+  const emojis = ["🍎","🍌","🍇","🍓","🥝","🍒","🍑","🥭"];
+  let cards = [...emojis,...emojis].sort(()=>Math.random()-0.5).map((e,i)=>({id:i,emoji:e,flipped:false,matched:false}));
+  let flipped = [], moves = 0, matchCount = 0;
+
+  const area = document.getElementById("gameArea");
+  area.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;">
+      <span>Moves: <span id="memMoves">0</span></span>
+      <button class="settings-btn" onclick="startMemory()">New Game</button>
+      <span>Pairs: <span id="memPairs">0</span>/8</span>
+    </div>
+    <div id="memGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>`;
+
+  function render() {
+    const grid = document.getElementById("memGrid");
+    grid.innerHTML = "";
+    cards.forEach(card => {
+      const div = document.createElement("div");
+      div.style = `aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;transition:background 0.2s;background:${card.matched?"rgba(52,199,89,0.25)":card.flipped?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.1)"};border:1px solid rgba(255,255,255,0.15);`;
+      div.textContent = card.flipped || card.matched ? card.emoji : "";
+      div.onclick = () => flip(card.id);
+      grid.appendChild(div);
+    });
+    document.getElementById("memMoves").textContent = moves;
+    document.getElementById("memPairs").textContent = matchCount;
+  }
+
+  function flip(id) {
+    const card = cards[id];
+    if (card.matched || card.flipped || flipped.length === 2) return;
+    card.flipped = true; flipped.push(card); render();
+    if (flipped.length === 2) {
+      moves++;
+      if (flipped[0].emoji === flipped[1].emoji) {
+        flipped.forEach(c => c.matched = true); matchCount++;
+        flipped = []; render();
+        if (matchCount === 8) setTimeout(()=>alert(`🎉 You won in ${moves} moves!`), 300);
+      } else {
+        setTimeout(() => { flipped.forEach(c=>c.flipped=false); flipped=[]; render(); }, 900);
+      }
+    }
+  }
+
+  render();
+}
+
+</script>
+</body>
+</html>
